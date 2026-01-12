@@ -31,15 +31,54 @@ event3 = function(){
 
     fetch("/2021/discussion/A9/api", requestOptions)
     .then(response => response.text())
-    .then(result => {
-        let data = JSON.parse(result);  // parse JSON string into object
-        console.log(data.logs);
-        document.getElementById("a9_d3").style.display = 'flex';
-        for (var i = 0; i < data.logs.length; i++) {
-            var li = document.createElement("li");
-            li.innerHTML = data.logs[i];
-            document.getElementById("a9_d3").appendChild(li);
+result => {
+    // Added proper error handling for JSON parsing
+    let data;
+    try {
+        data = JSON.parse(result);  // parse JSON string into object
+    } catch (e) {
+        console.error("Failed to parse response data:", e);
+        return; // Exit the function on parse error
+    }
+    
+    console.log(data.logs);
+    document.getElementById("a9_d3").style.display = 'flex';
+    
+    // Added input validation before rendering
+    if (!Array.isArray(data.logs)) {
+        console.error("Expected an array of logs but received:", typeof data.logs);
+        return;
+    }
+    
+    for (var i = 0; i < data.logs.length; i++) {
+        // Validate that logs contain expected data format before rendering
+        if (typeof data.logs[i] !== 'string') {
+            console.error("Unexpected data type in logs");
+            continue;  // Skip invalid entries
         }
+        
+        var li = document.createElement("li");
+        
+        // Fixed XSS vulnerability by using textContent instead of innerHTML
+        li.textContent = data.logs[i];
+        
+        // Alternative approach using contextual encoding if some HTML formatting is needed
+        /* 
+        const encoder = new DOMParser().parseFromString('', 'text/html');
+        li.innerHTML = encoder.createTextNode(data.logs[i]).textContent;
+        
+        // Or using DOMPurify for sanitization if HTML is required
+        // li.innerHTML = DOMPurify.sanitize(data.logs[i]);
+        */
+        
+        document.getElementById("a9_d3").appendChild(li);
+    }
+    
+    // Note: To complete the defense-in-depth approach, add Content-Security-Policy
+    // in your HTML head or through HTTP headers:
+    // <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+}
+
     })
     .catch(error => console.log('error', error));
     }
